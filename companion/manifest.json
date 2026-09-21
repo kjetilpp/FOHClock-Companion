@@ -4,7 +4,7 @@
 	"name": "FOHClock",
 	"shortname": "FOHClock",
 	"description": "Control and monitor FOHClock by device ID through FOHClock Relay, or over the local HTTP API",
-	"version": "0.2.2",
+	"version": "0.2.4",
 	"license": "MIT",
 	"repository": "git+https://github.com/kjetilpp/FOHClock-Companion.git",
 	"bugs": "https://github.com/kjetilpp/FOHClock-Companion/issues",

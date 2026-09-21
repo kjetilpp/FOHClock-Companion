@@ -42,7 +42,6 @@ export class RelayConnection {
 		const socket = new WebSocket(this.url, { handshakeTimeout: 5000, maxPayload: 65_536 })
 		this.socket = socket
 		socket.on('open', () => {
-			this.reconnectDelay = 1000
 			socket.send(
 				JSON.stringify({
 					type: 'companion.hello',
@@ -63,8 +62,18 @@ export class RelayConnection {
 				command.reject(new FohClockApiError(`Relay disconnected: ${reason.toString() || 'connection closed'}`))
 				this.commands.delete(requestId)
 			}
+			const closeReason = reason.toString()
+			const message = RelayConnection.configErrorMessages[closeReason]
+			if (message) this.callbacks.onError(message)
 			this.scheduleReconnect()
 		})
+	}
+
+	/** Close reasons the relay sends back when the configured device ID or credentials are wrong — not a
+	 *  transient network problem, so retrying won't help until the Companion configuration is corrected. */
+	private static readonly configErrorMessages: Record<string, string> = {
+		unknown_device: 'FOHClock device ID not found. Check the device ID in the configuration.',
+		authentication_required: 'FOHClock Relay rejected the connection handshake. Check the configuration.',
 	}
 
 	updateDeviceId(deviceId: string): void {
@@ -116,6 +125,13 @@ export class RelayConnection {
 				this.callbacks.onError('Pairing was denied in FOHClock')
 				break
 			case 'companion.ready':
+				this.reconnectDelay = 1000
+				this.callbacks.onReady(message.online === true)
+				break
+			case 'device.online':
+				// Pushed whenever the FOHClock device itself connects or disconnects from the relay,
+				// independent of this Companion connection. Reuses onReady's status handling since the
+				// meaning is identical: is the device currently reachable or not.
 				this.callbacks.onReady(message.online === true)
 				break
 			case 'timer.status':

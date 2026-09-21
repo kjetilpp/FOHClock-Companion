@@ -74,11 +74,12 @@ export default class ModuleInstance extends InstanceBase<ModuleConfig, RelaySecr
 
 	async sendCommand(path: string, body?: Record<string, unknown>): Promise<void> {
 		try {
-			this.applyStatus(
-				this.config.connectionMode === 'relay'
-					? await this.relay!.sendCommand(path, body)
-					: await requestTimer(this.config, path, 'POST', body),
-			)
+			if (this.config.connectionMode === 'relay') {
+				if (!this.relay) throw new FohClockApiError('Enter the FOHClock device ID in the configuration')
+				this.applyStatus(await this.relay.sendCommand(path, body))
+			} else {
+				this.applyStatus(await requestTimer(this.config, path, 'POST', body))
+			}
 		} catch (error) {
 			this.handleError(error)
 			throw error
@@ -195,6 +196,8 @@ export default class ModuleInstance extends InstanceBase<ModuleConfig, RelaySecr
 			this.updateStatus(InstanceStatus.AuthenticationFailure, 'Check the FOHClock access code')
 		} else if (this.config.connectionMode === 'local' && !this.config.host.trim()) {
 			this.updateStatus(InstanceStatus.BadConfig, 'Enter the iPhone/iPad IP address')
+		} else if (this.config.connectionMode === 'relay' && !this.config.deviceId.trim()) {
+			this.updateStatus(InstanceStatus.BadConfig, 'Enter the FOHClock device ID')
 		} else {
 			this.updateStatus(InstanceStatus.ConnectionFailure, message)
 		}
